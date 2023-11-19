@@ -1,0 +1,69 @@
+`timescale 1ns / 1ps
+//////////////////////////////////////////////////////////////////////////////////
+// 
+// Module Name:    triangle 
+// Description: 
+//
+//////////////////////////////////////////////////////////////////////////////////
+module triangle(cclk,SET,ADDRESS,COMMAND,rstb,triangle,BUSY,CS,MOSI,SCK);
+	//port definitions
+	input  wire cclk;
+        input  wire rstb;
+        output reg signed [11:0] triangle=0;
+        output  CS,MOSI,SCK,BUSY;
+	input wire SET;
+      input wire [3:0] ADDRESS;  // Set all DACs in parallel
+     input  wire [3:0] COMMAND;
+     reg clk1;
+     genvar i;
+       reg[27:0] counter1=28'd0;
+        parameter DIVISOR1 = 28'd32;
+        always @(posedge cclk)
+          begin
+          counter1 <= counter1 + 28'd1;
+          
+          if(counter1>=(DIVISOR1-1))
+            counter1 <= 28'd0;
+          clk1 <= (counter1<DIVISOR1/2)?1'b1:1'b0;
+          end
+          generate
+                  for (i = 1 ; i<=10000; i = i+1)
+                  begin
+                      dac d1(.CLK(cclk),
+                                               .DAC(triangle),
+                                               .ADDRESS(ADDRESS),
+                                              .COMMAND(COMMAND),
+                                              .SET(SET),            // start write
+                                              .BUSY(BUSY),        // BUSY=1 during write
+                                              .CS(CS),            // CS (to DAC)
+                                              .MOSI(MOSI),       // Serial DATA (to DAC)
+                                              .SCK(SCK));        // Serial clock (to DAC
+                                              end
+              endgenerate
+      
+   reg updown=1; // 1 = going up, 0 = going down
+   always @(posedge(clk1)) begin
+      if (~rstb) begin
+         triangle <= 8'b0;
+         updown <= 1'b1;
+      end else begin
+            if (updown == 1'b1) begin
+               if (triangle == 8'h80) begin
+                  updown <= 0;
+                  triangle <= triangle - 1;
+               end else begin
+                  triangle <= triangle + 1;
+               end
+            end else begin
+               if (triangle == 8'h00) begin
+                  updown <= 1;
+                  triangle <= triangle + 1;
+               end else begin
+                  triangle <= triangle - 1;
+               end
+         end 
+      end
+      
+   end 
+
+endmodule

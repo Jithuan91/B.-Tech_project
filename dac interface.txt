@@ -1,0 +1,91 @@
+`timescale 1ns / 1ps
+//`default_nettype none
+// Description: This routine will set the 12 bit serial DAC onboard the 
+//              Spartan 3E Starter Board.  Requuires 65 50 MHz clock cycles
+//              to set the DAC
+//   Inputs:
+//      CLK             - Onboard 50 MHz clock
+//      DAC[11:0]       - 12 bit dac setting word
+//      ADDRRESS[3:0]   - 0->3: set DAC n, 15-> set all DACS
+//      COMMAND[3:0]    - usuall 4'b0011, which sets DAC(s) when CS goes HI
+//      SET             - write cycle begins when SET goes HI
+//   Outputs:
+//      (to main module)
+//      BUSY            - Goes HI while write is in progress
+//      (to DAC pins)
+//      CS              - Goes LO to start write cycle
+//      MOSI            - serial data bits, MSB first
+//      SCK             - serial clock
+//   Note!  In addition to these bits, the DAC_CLR pin must be held
+//   HI to prevent the DAC from being held in a reset state!     
+//
+// Dependencies: 
+//
+// Revision: 
+//          1.01 - EjP, 20200217  initialized the output bits
+//          1.00 - EjP, 20190310: First working version, based in VHDL version
+// Revision 0.01 - File Created
+// Additional Comments: 
+//
+//////////////////////////////////////////////////////////////////////////////////
+module dac(
+    input wire CLK,
+    input wire [11:0] DAC,
+    input wire [3:0] ADDRESS,
+    input wire [3:0] COMMAND,
+    input wire SET,
+    output reg BUSY=0,
+    output reg CS=0,
+    output reg MOSI=0,
+    output reg SCK=0
+    );
+	 wire [31:0] DACWORD;          // Packed configuration word
+     reg [4:0] bit_index;
+
+    // Set up a three state FSM
+	 parameter IDLE=0,LO=1,HI=2;  // Three possible states
+     reg [1:0] state=IDLE;        // state
+
+	 // Pack the data word 
+	 assign DACWORD = {8'b00000000,COMMAND,ADDRESS,DAC,4'b0000};
+    //
+	 // State machine to output serial bits
+	 // This will remain in the IDLE state until it gets the SET command
+	 // At that point, it will go through a series of 32 LO and HI states.
+	 // The bits of DACWORD will be asserted at LO, starting wiht the MSB,
+	 // and the SCK will go HI with the HI state.  After 32 bits, the FSM
+	 // will return to IDLE.  CS will go LO and BUSY will go HI from the
+	 // time of the SET signal until all bits have been written.
+    always @ (posedge CLK)
+	 begin
+	     case(state)
+		      IDLE: begin
+				   CS = 1;
+					BUSY =0;
+					MOSI =0;
+					SCK  =0;
+				   if (SET == 1'b1) begin
+					  CS = 0;
+					  BUSY =1;
+					  bit_index =31;
+					  state=LO;
+					end
+				   end
+				LO: begin
+				  SCK = 0;
+				  MOSI = DACWORD[bit_index];
+				  state = HI;
+				  end
+				HI: begin
+				  SCK = 1;
+				  if(bit_index>0) begin
+				    bit_index = bit_index-1;
+					 state = LO;
+				  end else begin
+				    state = IDLE;
+				  end
+				  end
+			endcase
+	  end
+
+endmodule

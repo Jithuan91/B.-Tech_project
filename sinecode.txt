@@ -1,0 +1,59 @@
+`timescale 1ns / 1ps
+//////////////////////////////////////////////////////////////////////////////////
+// Company: 
+// Engineer: 
+// 
+// Create Date: 19.04.2023 19:38:56
+// Design Name: 
+// Module Name: sine
+// Project Name: 
+// Target Devices: 
+// Tool Versions: 
+// Description: 
+// 
+// Dependencies: 
+// 
+// Revision:
+// Revision 0.01 - File Created
+// Additional Comments:
+// 
+//////////////////////////////////////////////////////////////////////////////////
+
+
+module sine(input wire clk,output reg [7:0] out2);
+function automatic real factorial (input integer a);
+    begin
+      if (a > 1) begin
+        factorial = a * factorial(a - 1);
+      end
+      else begin
+        factorial = 1;
+      end
+    end
+  endfunction 
+  integer n=0;
+  real k=0;
+  real p=0;
+  reg e=0;
+  always@(posedge clk)
+	  
+	begin
+		k=(3.14*n)/180;
+		p= (k) - ((k**3) /factorial(3)) +((k**5) /factorial(5))-((k**7) /factorial(7))+((k**9) /factorial(9));
+	   if(e==0)
+           begin
+               p=100+100*p;
+            end
+       else if(e==1)
+            begin
+               p= 100-100*p;
+            end
+	   if (n==180)
+		begin
+		n=0; 
+		e=~e;
+		end
+		out2=p;
+		n=n+1;
+	end
+	endmodule
